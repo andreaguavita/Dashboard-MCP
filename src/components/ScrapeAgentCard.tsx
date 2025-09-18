@@ -1,190 +1,124 @@
+// src/components/ScrapeAgentCard.tsx
 'use client';
 
-import React, {useState} from 'react';
-import {useForm} from 'react-hook-form';
-import {zodResolver} from '@hookform/resolvers/zod';
-import {z} from 'zod';
-import {
-  Globe,
-  Link as LinkIcon,
-  Loader2,
-  Search,
-  FileText,
-} from 'lucide-react';
-import {AgentCard} from './AgentCard';
-import {Button} from './ui/button';
-import {Input} from './ui/input';
-import {Label} from './ui/label';
-import {useToast} from '@/hooks/use-toast';
-import {scrape} from '@/lib/services/scrapeClient';
-import type {ScrapeResult} from '@/lib/definitions';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from './ui/form';
-import {ScrollArea} from './ui/scroll-area';
-import {Badge} from './ui/badge';
+import React, { useState } from 'react';
 
-const FormSchema = z.object({
-  url: z.string().url({
-    message: 'Please enter a valid URL.',
-  }),
-});
+type ScrapeResponse = {
+  title: string;
+  links: string[];
+  textSummary: string;
+};
 
-function ScrapeButton({isLoading}: {isLoading: boolean}) {
-  return (
-    <Button
-      type="submit"
-      disabled={isLoading}
-      aria-disabled={isLoading}
-      aria-live="polite"
-    >
-      {isLoading ? <Loader2 className="animate-spin" /> : <Search />}
-      <span className="ml-2">{isLoading ? 'Scraping...' : 'Scrape'}</span>
-    </Button>
-  );
-}
-
-export function ScrapeAgentCard() {
-  const {toast} = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+export default function ScrapeAgentCard() {
+  const [url, setUrl] = useState('');
+  const [mobileView, setMobileView] = useState(false);
+  const [pages, setPages] = useState<number>(1);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ScrapeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scrapeData, setScrapeData] = useState<ScrapeResult | null>(null);
 
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      url: 'https://example.com',
-    },
-  });
-
-  async function onSubmit(data: z.infer<typeof FormSchema>) {
-    setIsLoading(true);
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
-    setScrapeData(null);
+    setResult(null);
+
+    if (!url) {
+      setError('Ingresa una URL');
+      return;
+    }
 
     try {
-      const result = await scrape(data.url);
-      setScrapeData(result);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'An unknown error occurred.';
-      setError(errorMessage);
-      toast({
-        variant: 'destructive',
-        title: 'Scraping Failed',
-        description: errorMessage,
+      setLoading(true);
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/scrape`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          maxDepth: 0,
+          followLinks: pages > 1,   // si piden >1 página, habilitamos recorrer links
+          mobile_view: mobileView,  // 🔽 nuevo
+          pages,                    // 🔽 nuevo
+        }),
       });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err?.error || `HTTP ${resp.status}`);
+      }
+      const data = (await resp.json()) as ScrapeResponse;
+      setResult(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error realizando scraping');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <AgentCard
-      title="Scraping Agent (MCP)"
-      description="Scrape a web page to extract its title, links, and a text summary."
-      icon={Globe}
-    >
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="url"
-            render={({field}) => (
-              <FormItem>
-                <Label htmlFor="url">URL to Scrape</Label>
-                <div className="flex gap-2 mt-1">
-                  <FormControl>
-                    <Input
-                      id="url"
-                      placeholder="https://example.com"
-                      {...field}
-                    />
-                  </FormControl>
-                  <ScrapeButton isLoading={isLoading} />
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
+    <div className="rounded-xl border p-4 space-y-3">
+      <h3 className="text-lg font-semibold">Scraping Agent (MCP)</h3>
+
+      <form className="space-y-3" onSubmit={onSubmit}>
+        <div>
+          <label className="block text-sm mb-1">URL a analizar</label>
+          <input
+            type="url"
+            placeholder="https://multiplica.com"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="w-full rounded-md border px-3 py-2"
+            required
           />
-        </form>
-      </Form>
+        </div>
 
-      <div
-        className="mt-6 flex-grow flex flex-col min-h-0"
-        aria-live="polite"
-        aria-busy={isLoading}
-      >
-        {(isLoading || scrapeData || error) && (
-          <>
-            <h3 className="font-headline text-lg mb-3">Results</h3>
-            <div className="p-4 border rounded-lg bg-secondary/30 flex-grow min-h-0">
-              {isLoading && (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="ml-4">Scraping page content...</p>
-                </div>
-              )}
-              {error && (
-                <div className="text-destructive text-center h-full flex flex-col justify-center">
-                  <p className="font-bold">Error</p>
-                  <p className="text-sm">{error}</p>
-                </div>
-              )}
-              {scrapeData && (
-                <div className="space-y-4 h-full flex flex-col">
-                  <h4 className="font-bold text-primary text-lg font-headline break-words">
-                    {scrapeData.title}
-                  </h4>
+        <div className="flex items-center gap-2">
+          <input
+            id="mobile"
+            type="checkbox"
+            checked={mobileView}
+            onChange={(e) => setMobileView(e.target.checked)}
+          />
+          <label htmlFor="mobile" className="text-sm">Analizar versión móvil</label>
+        </div>
 
-                  <div className="flex items-start gap-3">
-                    <FileText className="h-5 w-5 mt-1 text-accent shrink-0" />
-                    <div>
-                      <h5 className="font-semibold mb-1">Summary</h5>
-                      <p className="text-sm text-muted-foreground">
-                        {scrapeData.textSummary}
-                      </p>
-                    </div>
-                  </div>
+        <div>
+          <label className="block text-sm mb-1">Páginas a scrapear (1–10)</label>
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={pages}
+            onChange={(e) => setPages(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+            className="w-32 rounded-md border px-3 py-2"
+          />
+        </div>
 
-                  <div className="flex-grow flex flex-col min-h-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <LinkIcon className="h-5 w-5 text-accent shrink-0" />
-                      <h5 className="font-semibold">
-                        Found Links{' '}
-                        <Badge variant="secondary">
-                          {scrapeData.links.length}
-                        </Badge>
-                      </h5>
-                    </div>
-                    <ScrollArea className="flex-grow pr-3">
-                      <ul className="space-y-2">
-                        {scrapeData.links.map((link, index) => (
-                          <li key={index}>
-                            <a
-                              href={link.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline truncate block"
-                              title={link.href}
-                            >
-                              {link.text || link.href}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </ScrollArea>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </AgentCard>
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-md bg-black text-white px-4 py-2 disabled:opacity-60"
+        >
+          {loading ? 'Analizando…' : 'Scrapear'}
+        </button>
+      </form>
+
+      {error && <div className="text-red-600 text-sm">{error}</div>}
+
+      {result && (
+        <div className="mt-3 space-y-2">
+          <div><span className="font-medium">Título:</span> {result.title}</div>
+          <div>
+            <span className="font-medium">Links ({result.links.length}):</span>
+            <ul className="list-disc pl-5 text-sm">
+              {result.links.slice(0, 10).map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+          </div>
+          <div>
+            <span className="font-medium">Resumen:</span>
+            <p className="text-sm whitespace-pre-wrap">{result.textSummary}</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
