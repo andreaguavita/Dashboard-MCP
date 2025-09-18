@@ -1,7 +1,6 @@
 'use client';
 
 import React, {
-  startTransition,
   useEffect,
   useRef,
   useActionState,
@@ -87,21 +86,24 @@ export function ImageAgentCard() {
     p => p.id === 'image-agent-placeholder'
   );
 
-  // Use local state to manage the displayed image to handle the optimistic UI correctly
-  const [displayedImage, setDisplayedImage] = useState(placeholderImage?.imageUrl || 'https://picsum.photos/512/512');
-  const [altText, setAltText] = useState('Generated image placeholder');
-
-  // When a new image is successfully generated, update the displayed image
-  useEffect(() => {
-    if (imageState.data?.src && !isImagePending) {
-      setDisplayedImage(imageState.data.src);
-      setAltText(imageState.data.name);
+  const [displayedImage, setDisplayedImage] = useState<{src: string; alt: string}>(
+    {
+      src: placeholderImage?.imageUrl || 'https://picsum.photos/512/512',
+      alt: 'Generated image placeholder',
     }
-  }, [imageState.data, isImagePending]);
-
+  );
 
   useEffect(() => {
-    if (imageState.message && imageState.error) {
+    if (isImagePending) {
+       setDisplayedImage({
+        src: 'https://picsum.photos/seed/loading/512/512',
+        alt: 'Loading image...',
+      });
+    }
+  }, [isImagePending]);
+
+  useEffect(() => {
+    if (imageState.error) {
       toast({
         variant: 'destructive',
         title: 'Generation Failed',
@@ -109,8 +111,16 @@ export function ImageAgentCard() {
       });
       // Revert to placeholder if generation fails
       if(placeholderImage?.imageUrl) {
-        setDisplayedImage(placeholderImage.imageUrl);
+        setDisplayedImage({
+          src: placeholderImage.imageUrl,
+          alt: 'Generated image placeholder',
+        });
       }
+    } else if (imageState.data?.src) {
+      setDisplayedImage({
+        src: imageState.data.src,
+        alt: imageState.data.name,
+      });
     }
   }, [imageState, toast, placeholderImage]);
 
@@ -146,26 +156,20 @@ export function ImageAgentCard() {
         aria-live="polite"
       >
         <Image
-          src={isImagePending ? 'https://picsum.photos/seed/loading/512/512' : displayedImage}
-          alt={isImagePending ? 'Loading image...' : altText}
+          src={displayedImage.src}
+          alt={displayedImage.alt}
           width={512}
           height={512}
           className="rounded-lg object-cover aspect-square max-w-full h-auto max-h-[400px] shadow-md"
           data-ai-hint={placeholderImage?.imageHint}
           priority
-          unoptimized={displayedImage.startsWith('data:')} // Important for Data URLs
+          unoptimized={displayedImage.src.startsWith('data:')}
         />
       </div>
 
       <form
         ref={formRef}
-        action={formData => {
-          startTransition(() => {
-            // Optimistically set a loading image
-            setDisplayedImage('https://picsum.photos/seed/loading/512/512');
-            formAction(formData);
-          });
-        }}
+        action={formAction}
         className="mt-4 space-y-4"
       >
         <div>
