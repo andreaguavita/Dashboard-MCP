@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "image-agent-placeholder",
+      "description": "A placeholder image for the image generation agent before an image is generated.",
+      "imageUrl": "https://picsum.photos/seed/agent-placeholder/512/512",
+      "imageHint": "abstract tech"
+    }
+  ]
 }
