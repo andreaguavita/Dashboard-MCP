@@ -1,11 +1,9 @@
 // This file centralizes environment variable access for clarity.
 
-// For server-side environment variables.
-// Access these directly via `process.env` in server-side code (Server Components, API Routes, Server Actions).
-export const N8N_WEBHOOK_URL = process.env.VITE_N8N_WEBHOOK_URL_GENIMAGE;
-export const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
-
-// For client-side environment variables.
-// These MUST be prefixed with NEXT_PUBLIC_ in your .env file.
-// Example:
-// export const NEXT_PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+// Using NEXT_PUBLIC_ for client-side vars is a requirement.
+// Server-only vars can be accessed directly via process.env.
+export const ENV = {
+  N8N_WEBHOOK_URL: process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || '',
+  API_BASE: process.env.NEXT_PUBLIC_API_BASE || '',
+  MCP_PROXY_BASE: process.env.MCP_PROXY_BASE || ''
+};
