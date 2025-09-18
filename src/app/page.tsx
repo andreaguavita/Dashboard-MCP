@@ -1,6 +1,7 @@
+// src/app/page.tsx
 import { Header } from "@/components/Header";
 import { ImageAgentCard } from "@/components/ImageAgentCard";
-import { ScrapeAgentCard } from "@/components/ScrapeAgentCard";
+import ScrapeAgentCard from "@/components/ScrapeAgentCard";
 
 export default function Home() {
   return (
