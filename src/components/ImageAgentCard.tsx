@@ -1,7 +1,13 @@
 'use client';
 
-import React, {startTransition, useEffect, useOptimistic, useRef} from 'react';
-import {useFormState, useFormStatus} from 'react-dom';
+import React, {
+  startTransition,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useActionState,
+} from 'react';
+import {useFormStatus} from 'react-dom';
 import Image from 'next/image';
 import {
   ImageIcon,
@@ -69,11 +75,11 @@ function SuggestButton() {
 
 export function ImageAgentCard() {
   const {toast} = useToast();
-  const [imageState, formAction] = useFormState(
+  const [imageState, formAction] = useActionState(
     generateImageAction,
     initialState
   );
-  const [promptsState, promptsAction] = useFormState(
+  const [promptsState, promptsAction] = useActionState(
     generateSmartPromptsAction,
     initialPromptsState
   );
@@ -98,7 +104,6 @@ export function ImageAgentCard() {
       }
     };
   }, [imageState.data?.imageUrl]);
-
 
   const [optimisticImage, setOptimisticImage] = useOptimistic(
     imageState.data?.imageUrl,
