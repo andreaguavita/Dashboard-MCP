@@ -7,7 +7,6 @@ import React, {
   useRef,
   useActionState,
 } from 'react';
-import {useFormStatus} from 'react-dom';
 import Image from 'next/image';
 import {
   ImageIcon,
@@ -40,75 +39,82 @@ const initialPromptsState: ActionState<string[]> = {
   message: '',
 };
 
-function GenerateButton() {
-  const {pending} = useFormStatus();
+function GenerateButton({isPending}: {isPending: boolean}) {
   return (
     <Button
       type="submit"
-      disabled={pending}
-      aria-disabled={pending}
+      disabled={isPending}
+      aria-disabled={isPending}
       className="w-full sm:w-auto"
       aria-live="polite"
     >
-      {pending ? <Loader2 className="animate-spin" /> : <Send />}
-      <span className="ml-2">{pending ? 'Generating...' : 'Generate'}</span>
+      {isPending ? <Loader2 className="animate-spin" /> : <Send />}
+      <span className="ml-2">{isPending ? 'Generating...' : 'Generate'}</span>
     </Button>
   );
 }
 
-function SuggestButton() {
-  const {pending} = useFormStatus();
+function SuggestButton({isPending}: {isPending: boolean}) {
   return (
     <Button
       type="submit"
       variant="outline"
       size="sm"
-      disabled={pending}
-      aria-disabled={pending}
+      disabled={isPending}
+      aria-disabled={isPending}
       aria-live="polite"
     >
-      {pending ? <Loader2 className="animate-spin" /> : <Wand2 />}
-      <span className="ml-2">{pending ? 'Thinking...' : 'Suggest'}</span>
+      {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
+      <span className="ml-2">{isPending ? 'Thinking...' : 'Suggest'}</span>
     </Button>
   );
 }
 
 export function ImageAgentCard() {
   const {toast} = useToast();
-  const [imageState, formAction] = useActionState(
+  const [imageState, formAction, isImagePending] = useActionState(
     generateImageAction,
     initialState
   );
-  const [promptsState, promptsAction] = useActionState(
+  const [promptsState, promptsAction, isPromptsPending] = useActionState(
     generateSmartPromptsAction,
     initialPromptsState
   );
 
   const formRef = useRef<HTMLFormElement>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const generatedImageRef = useRef<string | null>(null);
+  const lastBlobUrl = useRef<string | null>(null);
 
   const placeholderImage = PlaceHolderImages.find(
     p => p.id === 'image-agent-placeholder'
   );
 
-  // Clean up Blob URL on unmount or when a new image is generated
+  const finalImageUrl = imageState.data?.imageUrl || placeholderImage?.imageUrl || 'https://picsum.photos/512/512';
+  
+  const [optimisticImage, setOptimisticImage] = useOptimistic(
+    finalImageUrl,
+    () => 'https://picsum.photos/seed/loading/512/512'
+  );
+  
+  const displayedImage = isImagePending ? optimisticImage : finalImageUrl;
+
+  // Revoke old blob URL when a new one is created or on unmount
   useEffect(() => {
-    const previousUrl = generatedImageRef.current;
-    if (imageState.data?.imageUrl) {
-      generatedImageRef.current = imageState.data.imageUrl;
+    if (imageState.data?.imageUrl && imageState.data.imageUrl !== lastBlobUrl.current) {
+      if (lastBlobUrl.current) {
+        URL.revokeObjectURL(lastBlobUrl.current);
+      }
+      lastBlobUrl.current = imageState.data.imageUrl;
     }
+
     return () => {
-      if (previousUrl) {
-        URL.revokeObjectURL(previousUrl);
+      if (lastBlobUrl.current) {
+        URL.revokeObjectURL(lastBlobUrl.current);
+        lastBlobUrl.current = null;
       }
     };
   }, [imageState.data?.imageUrl]);
 
-  const [optimisticImage, setOptimisticImage] = useOptimistic(
-    imageState.data?.imageUrl,
-    (state, newImage: string) => newImage
-  );
 
   useEffect(() => {
     if (imageState.message && imageState.error) {
@@ -140,8 +146,6 @@ export function ImageAgentCard() {
     }
   };
 
-  const {pending} = useFormStatus();
-
   return (
     <AgentCard
       title="Image Agent (n8n)"
@@ -150,15 +154,11 @@ export function ImageAgentCard() {
     >
       <div
         className="flex-grow flex flex-col justify-center items-center p-4 border-2 border-dashed rounded-lg bg-secondary/50"
-        aria-busy={pending}
+        aria-busy={isImagePending}
         aria-live="polite"
       >
         <Image
-          src={
-            optimisticImage ||
-            placeholderImage?.imageUrl ||
-            'https://picsum.photos/512/512'
-          }
+          src={displayedImage}
           alt={imageState.data?.image_name || 'Generated image placeholder'}
           width={512}
           height={512}
@@ -171,10 +171,10 @@ export function ImageAgentCard() {
       <form
         ref={formRef}
         action={formData => {
-          startTransition(() =>
-            setOptimisticImage('https://picsum.photos/seed/loading/512/512')
-          );
-          formAction(formData);
+          startTransition(() => {
+            setOptimisticImage();
+            formAction(formData);
+          });
         }}
         className="mt-4 space-y-4"
       >
@@ -196,7 +196,7 @@ export function ImageAgentCard() {
           )}
         </div>
         <div className="text-right">
-          <GenerateButton />
+          <GenerateButton isPending={isImagePending} />
         </div>
       </form>
 
@@ -214,7 +214,7 @@ export function ImageAgentCard() {
             </Label>
             <Input id="topic" name="topic" placeholder="Enter a topic, e.g., 'space'" />
           </div>
-          <SuggestButton />
+          <SuggestButton isPending={isPromptsPending} />
         </form>
         {promptsState.fieldErrors?.topic && (
           <p className="text-sm text-destructive mt-1">
