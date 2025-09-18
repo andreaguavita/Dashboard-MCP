@@ -6,11 +6,9 @@ export type ScrapeResult = {
 };
 
 export type N8NImageResult = {
-  image_url: string;
-  metadata?: {
-    jobId?: string;
-    duration_ms?: number;
-  };
+  imageUrl?: string;
+  image_name?: string;
+  error?: string;
 };
 
 export type ActionState<T = any> = {

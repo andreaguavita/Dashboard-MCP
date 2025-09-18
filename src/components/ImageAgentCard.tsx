@@ -83,7 +83,7 @@ export function ImageAgentCard() {
 
   const placeholderImage = PlaceHolderImages.find(p => p.id === 'image-agent-placeholder');
   const [optimisticImage, setOptimisticImage] = useOptimistic(
-    imageState.data?.image_url,
+    imageState.data?.imageUrl,
     (state, newImage: string) => newImage
   );
 
@@ -115,7 +115,7 @@ export function ImageAgentCard() {
       <div className="flex-grow flex flex-col justify-center items-center p-4 border-2 border-dashed rounded-lg bg-secondary/50">
         <Image
           src={optimisticImage || placeholderImage?.imageUrl || "https://picsum.photos/512/512"}
-          alt={imageState.data?.image_url ? "Generated image" : "Placeholder image"}
+          alt={imageState.data?.image_name || "Generated image"}
           width={512}
           height={512}
           className="rounded-lg object-cover aspect-square max-w-full h-auto max-h-[400px] shadow-md"

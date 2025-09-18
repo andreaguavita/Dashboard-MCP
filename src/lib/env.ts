@@ -2,7 +2,7 @@
 
 // For server-side environment variables.
 // Access these directly via `process.env` in server-side code (Server Components, API Routes, Server Actions).
-export const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
+export const N8N_WEBHOOK_URL = process.env.VITE_N8N_WEBHOOK_URL_GENIMAGE;
 export const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 
 // For client-side environment variables.

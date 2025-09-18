@@ -31,8 +31,8 @@ export async function generateImageAction(
   try {
     // In a real app, you might add content moderation here.
     const result = await callN8n(validatedFields.data.prompt);
-    if (!result.image_url || result.image_url.includes('picsum.photos/seed/error')) {
-        throw new Error("The image generation service failed.");
+    if (result.error || !result.imageUrl) {
+        throw new Error(result.error || "The image generation service failed.");
     }
     return {
       message: "Image generated successfully!",

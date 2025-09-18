@@ -3,8 +3,10 @@ import { N8N_WEBHOOK_URL } from "@/lib/env";
 import type { N8NImageResult } from "@/lib/definitions";
 
 const N8NResponseSchema = z.object({
-  image_url: z.string().url(),
-  metadata: z
+  imageUrl: z.string(),
+  mime_type: z.string().optional(),
+  image_name: z.string().optional(),
+  meta: z
     .object({
       jobId: z.string().optional(),
       duration_ms: z.number().optional(),
@@ -53,8 +55,7 @@ export async function generateImage(
 ): Promise<N8NImageResult> {
   if (!N8N_WEBHOOK_URL || !N8N_WEBHOOK_URL.startsWith('http')) {
     console.error("N8N_WEBHOOK_URL is not configured correctly.");
-    // Return a specific placeholder to indicate configuration error
-    return { image_url: `https://picsum.photos/seed/config-error/512/512` };
+    return { error: 'N8N_WEBHOOK_URL is not configured correctly.' };
   }
 
   try {
@@ -72,11 +73,20 @@ export async function generateImage(
       console.error("n8n response validation error:", validation.error);
       throw new Error("Received invalid data structure from n8n webhook.");
     }
-
-    return validation.data;
+    
+    if (validation.data.meta) {
+        console.log("n8n metadata:", validation.data.meta);
+    }
+    
+    const mimeType = validation.data.mime_type || 'image/png';
+    
+    return {
+      imageUrl: `data:${mimeType};base64,${validation.data.imageUrl}`,
+      image_name: validation.data.image_name,
+    };
   } catch (error) {
     console.error("Error in n8nClient:", error);
-    // On failure, return a placeholder error image
-    return { image_url: `https://picsum.photos/seed/error/512/512` };
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { error: errorMessage };
   }
 }
