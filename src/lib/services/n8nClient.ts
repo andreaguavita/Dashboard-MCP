@@ -12,7 +12,7 @@ const N8NResponseSchema = z.object({
 /**
  * Generates an image by calling the n8n webhook.
  * @param prompt The text prompt for image generation.
- * @returns A promise that resolves to an object containing the Blob URL source and the image name.
+ * @returns A promise that resolves to an object containing the Data URL source and the image name.
  */
 export async function generateImage(
   prompt: string
@@ -55,17 +55,17 @@ export async function generateImage(
       image_name: imageName,
     } = validation.data;
 
-    if (!base64Image) {
-      throw new Error('No imageUrl field in n8n response.');
+    // Ensure imageUrl is not empty and remove any whitespace/newlines
+    const cleanedBase64 = (base64Image || '').toString().replace(/\s/g, '');
+    if (!cleanedBase64) {
+      throw new Error('imageUrl field in n8n response is empty.');
     }
 
-    // Convert base64 to Blob
-    const fetchRes = await fetch(`data:${mimeType};base64,${base64Image}`);
-    const blob = await fetchRes.blob();
-    const blobUrl = URL.createObjectURL(blob);
+    // Construct the Data URL
+    const src = `data:${mimeType};base64,${cleanedBase64}`;
 
     return {
-      src: blobUrl,
+      src: src,
       name: imageName,
     };
   } catch (error) {

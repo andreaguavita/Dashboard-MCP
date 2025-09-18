@@ -3,9 +3,9 @@
 import React, {
   startTransition,
   useEffect,
-  useOptimistic,
   useRef,
   useActionState,
+  useState,
 } from 'react';
 import Image from 'next/image';
 import {
@@ -26,12 +26,11 @@ import {
   generateImageAction,
   generateSmartPromptsAction,
 } from '@/lib/actions/image';
-import type {ActionState, N8NImageResult} from '@/lib/definitions';
+import type {ActionState} from '@/lib/definitions';
 import {PlaceHolderImages} from '@/lib/placeholder-images';
-import {Badge} from './ui/badge';
 import {Separator} from './ui/separator';
 
-const initialState: ActionState<N8NImageResult> = {
+const initialState: ActionState<{src: string; name: string}> = {
   message: '',
 };
 
@@ -83,37 +82,22 @@ export function ImageAgentCard() {
 
   const formRef = useRef<HTMLFormElement>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const lastBlobUrl = useRef<string | null>(null);
-
+  
   const placeholderImage = PlaceHolderImages.find(
     p => p.id === 'image-agent-placeholder'
   );
 
-  const finalImageUrl = imageState.data?.imageUrl || placeholderImage?.imageUrl || 'https://picsum.photos/512/512';
-  
-  const [optimisticImage, setOptimisticImage] = useOptimistic(
-    finalImageUrl,
-    () => 'https://picsum.photos/seed/loading/512/512'
-  );
-  
-  const displayedImage = isImagePending ? optimisticImage : finalImageUrl;
+  // Use local state to manage the displayed image to handle the optimistic UI correctly
+  const [displayedImage, setDisplayedImage] = useState(placeholderImage?.imageUrl || 'https://picsum.photos/512/512');
+  const [altText, setAltText] = useState('Generated image placeholder');
 
-  // Revoke old blob URL when a new one is created or on unmount
+  // When a new image is successfully generated, update the displayed image
   useEffect(() => {
-    if (imageState.data?.imageUrl && imageState.data.imageUrl !== lastBlobUrl.current) {
-      if (lastBlobUrl.current) {
-        URL.revokeObjectURL(lastBlobUrl.current);
-      }
-      lastBlobUrl.current = imageState.data.imageUrl;
+    if (imageState.data?.src && !isImagePending) {
+      setDisplayedImage(imageState.data.src);
+      setAltText(imageState.data.name);
     }
-
-    return () => {
-      if (lastBlobUrl.current) {
-        URL.revokeObjectURL(lastBlobUrl.current);
-        lastBlobUrl.current = null;
-      }
-    };
-  }, [imageState.data?.imageUrl]);
+  }, [imageState.data, isImagePending]);
 
 
   useEffect(() => {
@@ -123,8 +107,12 @@ export function ImageAgentCard() {
         title: 'Generation Failed',
         description: imageState.message,
       });
+      // Revert to placeholder if generation fails
+      if(placeholderImage?.imageUrl) {
+        setDisplayedImage(placeholderImage.imageUrl);
+      }
     }
-  }, [imageState, toast]);
+  }, [imageState, toast, placeholderImage]);
 
   useEffect(() => {
     if (promptsState.message && promptsState.error) {
@@ -158,13 +146,14 @@ export function ImageAgentCard() {
         aria-live="polite"
       >
         <Image
-          src={displayedImage}
-          alt={imageState.data?.image_name || 'Generated image placeholder'}
+          src={isImagePending ? 'https://picsum.photos/seed/loading/512/512' : displayedImage}
+          alt={isImagePending ? 'Loading image...' : altText}
           width={512}
           height={512}
           className="rounded-lg object-cover aspect-square max-w-full h-auto max-h-[400px] shadow-md"
           data-ai-hint={placeholderImage?.imageHint}
           priority
+          unoptimized={displayedImage.startsWith('data:')} // Important for Data URLs
         />
       </div>
 
@@ -172,7 +161,8 @@ export function ImageAgentCard() {
         ref={formRef}
         action={formData => {
           startTransition(() => {
-            setOptimisticImage();
+            // Optimistically set a loading image
+            setDisplayedImage('https://picsum.photos/seed/loading/512/512');
             formAction(formData);
           });
         }}

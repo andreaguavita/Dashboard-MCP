@@ -3,7 +3,7 @@
 import {z} from 'zod';
 import {generatePrompt} from '@/ai/flows/generate-prompt';
 import {generateImage as callN8n} from '@/lib/services/n8nClient';
-import type {ActionState, N8NImageResult} from '@/lib/definitions';
+import type {ActionState} from '@/lib/definitions';
 
 const ImagePromptSchema = z.object({
   prompt: z
@@ -13,9 +13,9 @@ const ImagePromptSchema = z.object({
 });
 
 export async function generateImageAction(
-  prevState: ActionState<N8NImageResult>,
+  prevState: ActionState<{src: string; name: string}>,
   formData: FormData
-): Promise<ActionState<N8NImageResult>> {
+): Promise<ActionState<{src: string; name: string}>> {
   const validatedFields = ImagePromptSchema.safeParse({
     prompt: formData.get('prompt'),
   });
@@ -35,10 +35,7 @@ export async function generateImageAction(
     }
     return {
       message: 'Image generated successfully!',
-      data: {
-        imageUrl: result.src,
-        image_name: result.name,
-      },
+      data: result,
       error: false,
     };
   } catch (error) {
