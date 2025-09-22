@@ -141,7 +141,7 @@ export function ImageAgentCard() {
 
   return (
     <AgentCard
-      title="Image Agent (n8n)"
+      title="HOLA MUNDO"
       description="Generate an image from a text prompt using an n8n workflow."
       icon={ImageIcon}
     >
