@@ -87,7 +87,7 @@ This project is configured for deployment on **Firebase App Hosting**.
 
 ### Environment Variables on Firebase
 
-You will need to set your `N8N_WEBHOOK_URL` as a secret in Firebase App Hosting so the deployed application can access it.
+You will need to set your `N8N_WEBHOOK_URL` as a secret in Firebase App Hosting so the deployed application can access it. HOLA MUNDO
 
 ```bash
 firebase apphosting:secrets:set N8N_WEBHOOK_URL
