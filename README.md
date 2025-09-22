@@ -2,7 +2,7 @@
 
 Welcome to AgentFlow, a dashboard for managing AI agents and flows, built with Next.js and deployed on Firebase.
 
-This v1 prototype includes two primary agents:
+This v2 prototype includes two primary agents:
 1.  **Image Agent**: Generates images from a text prompt via an n8n webhook.
 2.  **Scraping Agent**: Scrapes web pages for content using a Playwright MCP-ready architecture.
 
